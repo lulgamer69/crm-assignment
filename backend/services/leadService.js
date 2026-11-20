@@ -17,21 +17,32 @@ const ALLOWED_STATUSES = new Set([
   "Lost",
 ]);
 
+const INPUT_VALIDATION_ERROR_CODE = "LEAD_INPUT_VALIDATION";
 const MAX_SEARCH_LENGTH = 100;
 const MAX_PAGE_SIZE = 100;
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const createInputValidationError = (message) => {
+  const error = new Error(message);
+  error.code = INPUT_VALIDATION_ERROR_CODE;
+  return error;
+};
 
 const normalizePositiveInteger = (value, parameterName, maximum) => {
   const normalizedValue =
     typeof value === "string" && value.trim() !== "" ? Number(value) : value;
 
   if (!Number.isSafeInteger(normalizedValue) || normalizedValue <= 0) {
-    throw new Error(`${parameterName} must be a positive integer`);
+    throw createInputValidationError(
+      `${parameterName} must be a positive integer`
+    );
   }
 
   if (maximum !== undefined && normalizedValue > maximum) {
-    throw new Error(`${parameterName} cannot exceed ${maximum}`);
+    throw createInputValidationError(
+      `${parameterName} cannot exceed ${maximum}`
+    );
   }
 
   return normalizedValue;
@@ -58,13 +69,15 @@ const getAllLeads = async (
   limit = 10
 ) => {
   if (search !== undefined && typeof search !== "string") {
-    throw new Error("Search must be a string");
+    throw createInputValidationError("Search must be a string");
   }
 
   const normalizedSearch = search ?? "";
 
   if (normalizedSearch.length > MAX_SEARCH_LENGTH) {
-    throw new Error(`Search cannot exceed ${MAX_SEARCH_LENGTH} characters`);
+    throw createInputValidationError(
+      `Search cannot exceed ${MAX_SEARCH_LENGTH} characters`
+    );
   }
 
   if (
@@ -73,7 +86,9 @@ const getAllLeads = async (
     status !== "" &&
     (typeof status !== "string" || !ALLOWED_STATUSES.has(status))
   ) {
-    throw new Error("Status must be New, Contacted, Qualified, or Lost");
+    throw createInputValidationError(
+      "Status must be New, Contacted, Qualified, or Lost"
+    );
   }
 
   const normalizedPage = normalizePositiveInteger(page, "page");
@@ -85,7 +100,9 @@ const getAllLeads = async (
   const skip = (normalizedPage - 1) * normalizedLimit;
 
   if (!Number.isSafeInteger(skip)) {
-    throw new Error("Page and limit produce an excessively large offset");
+    throw createInputValidationError(
+      "Page and limit produce an excessively large offset"
+    );
   }
 
   const query = {};
@@ -122,7 +139,7 @@ const updateLead = async (id, leadData) => {
   const updates = pickAllowedLeadFields(leadData);
 
   if (Object.keys(updates).length === 0) {
-    throw new Error(
+    throw createInputValidationError(
       "At least one valid field is required to update a lead"
     );
   }
@@ -190,6 +207,7 @@ const getLeadStats = async () => {
 };
 
 module.exports = {
+  INPUT_VALIDATION_ERROR_CODE,
   createLead,
   getAllLeads,
   updateLead,
