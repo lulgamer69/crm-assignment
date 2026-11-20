@@ -10,6 +10,33 @@ const ALLOWED_LEAD_FIELDS = new Set([
   "notes",
 ]);
 
+const ALLOWED_STATUSES = new Set([
+  "New",
+  "Contacted",
+  "Qualified",
+  "Lost",
+]);
+
+const MAX_SEARCH_LENGTH = 100;
+const MAX_PAGE_SIZE = 100;
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const normalizePositiveInteger = (value, parameterName, maximum) => {
+  const normalizedValue =
+    typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+
+  if (!Number.isSafeInteger(normalizedValue) || normalizedValue <= 0) {
+    throw new Error(`${parameterName} must be a positive integer`);
+  }
+
+  if (maximum !== undefined && normalizedValue > maximum) {
+    throw new Error(`${parameterName} cannot exceed ${maximum}`);
+  }
+
+  return normalizedValue;
+};
+
 const pickAllowedLeadFields = (leadData) =>
   Object.fromEntries(
     Object.entries(leadData ?? {}).filter(
@@ -30,33 +57,64 @@ const getAllLeads = async (
   page = 1,
   limit = 10
 ) => {
-  let query = {};
+  if (search !== undefined && typeof search !== "string") {
+    throw new Error("Search must be a string");
+  }
 
-  if (search) {
+  const normalizedSearch = search ?? "";
+
+  if (normalizedSearch.length > MAX_SEARCH_LENGTH) {
+    throw new Error(`Search cannot exceed ${MAX_SEARCH_LENGTH} characters`);
+  }
+
+  if (
+    status !== undefined &&
+    status !== null &&
+    status !== "" &&
+    (typeof status !== "string" || !ALLOWED_STATUSES.has(status))
+  ) {
+    throw new Error("Status must be New, Contacted, Qualified, or Lost");
+  }
+
+  const normalizedPage = normalizePositiveInteger(page, "page");
+  const normalizedLimit = normalizePositiveInteger(
+    limit,
+    "limit",
+    MAX_PAGE_SIZE
+  );
+  const skip = (normalizedPage - 1) * normalizedLimit;
+
+  if (!Number.isSafeInteger(skip)) {
+    throw new Error("Page and limit produce an excessively large offset");
+  }
+
+  const query = {};
+
+  if (normalizedSearch) {
+    const escapedSearch = escapeRegex(normalizedSearch);
+
     query.$or = [
-      { name: { $regex: search, $options: "i" } },
-      { email: { $regex: search, $options: "i" } },
-      { company: { $regex: search, $options: "i" } },
+      { name: { $regex: escapedSearch, $options: "i" } },
+      { email: { $regex: escapedSearch, $options: "i" } },
+      { company: { $regex: escapedSearch, $options: "i" } },
     ];
   }
 
-  if (status) {
+  if (status !== undefined && status !== null && status !== "") {
     query.status = status;
   }
-
-  const skip = (page - 1) * limit;
 
   const totalLeads = await Lead.countDocuments(query);
 
   const leads = await Lead.find(query)
-    .sort({ createdAt: -1 })
+    .sort({ createdAt: -1, _id: -1 })
     .skip(skip)
-    .limit(Number(limit));
+    .limit(normalizedLimit);
 
   return {
     leads,
     totalLeads,
-    totalPages: Math.ceil(totalLeads / limit),
+    totalPages: Math.ceil(totalLeads / normalizedLimit),
   };
 };
 
@@ -86,6 +144,11 @@ const deleteLead = async (id) => {
 const getLeadStats = async () => {
   const stats = await Lead.aggregate([
     {
+      $match: {
+        status: { $in: [...ALLOWED_STATUSES] },
+      },
+    },
+    {
       $group: {
         _id: "$status",
         count: { $sum: 1 },
@@ -98,7 +161,6 @@ const getLeadStats = async () => {
     new: 0,
     contacted: 0,
     qualified: 0,
-    converted: 0,
     lost: 0,
   };
 
@@ -116,10 +178,6 @@ const getLeadStats = async () => {
 
       case "Qualified":
         result.qualified = item.count;
-        break;
-
-      case "Converted":
-        result.converted = item.count;
         break;
 
       case "Lost":
