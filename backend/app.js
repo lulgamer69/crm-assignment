@@ -12,10 +12,10 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://leadflow-crm-three-flame.vercel.app",
-      "https://leadflow-b5smdwqvr-krishnasproject1.vercel.app",
+      "https://crm-assignment-eta.vercel.app",
     ],
-    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 app.use(express.json());
