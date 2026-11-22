@@ -1,8 +1,11 @@
 const express = require("express");
+const authenticate = require("../middleware/authenticate");
 
 const router = express.Router();
 
 const leadController = require("../controllers/leadController");
+
+router.use(authenticate);
 
 router.post("/", leadController.createLead);
 router.get("/stats", leadController.getLeadStats);

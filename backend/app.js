@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 
 const app = express();
+const authRoutes = require("./routes/authRoutes");
 const leadRoutes = require("./routes/leadRoutes");
 const notFound = require("./middleware/notfound");
 const errorHandler = require("./middleware/errorhandler");
@@ -17,6 +18,7 @@ app.use(
   })
 );
 app.use(express.json());
+app.use("/api/auth", authRoutes);
 app.use("/api/leads", leadRoutes);
 
 app.get("/", (req, res) => {

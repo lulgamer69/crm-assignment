@@ -27,7 +27,11 @@ const errorHandler = (err, req, res, next) => {
     success: false,
     message: isMalformedJson
       ? "Malformed JSON request body"
-      : err?.message || "Request failed",
+      : statusCode < 500 &&
+          err?.name === "AuthError" &&
+          err?.isOperational === true
+        ? err.message
+        : "Request failed",
   });
 };
 
