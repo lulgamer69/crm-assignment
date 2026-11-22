@@ -50,4 +50,30 @@ const login = async (req, res, next) => {
   }
 };
 
-module.exports = { signup, login };
+const getProfile = async (req, res, next) => {
+  try {
+    const user = await authService.getProfile(req.auth.userId);
+    return res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const updateProfile = async (req, res, next) => {
+  if (!isRequestBodyObject(req.body)) {
+    return next(createAuthError("AUTH_VALIDATION_ERROR", 400, "Request body must be a JSON object"));
+  }
+  try {
+    const user = await authService.updateProfile(req.auth.userId, req.body);
+    return res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+module.exports = {
+  signup,
+  login,
+  getProfile,
+  updateProfile,
+};

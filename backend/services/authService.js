@@ -17,8 +17,8 @@ const normalizeEmail = (email) =>
 
 const isValidPassword = (password) =>
   typeof password === "string" &&
-  Array.from(password).length >= PASSWORD_MIN_LENGTH &&
-  password.trim().length > 0 &&
+  Array.from(password).filter((character) => !/\s/u.test(character)).length >=
+    PASSWORD_MIN_LENGTH &&
   Buffer.byteLength(password, "utf8") <= PASSWORD_MAX_BYTES;
 
 const validateSignupInput = (input) => {
@@ -39,7 +39,7 @@ const validateSignupInput = (input) => {
     throw createAuthError(
       "AUTH_VALIDATION_ERROR",
       400,
-      `Password must contain at least ${PASSWORD_MIN_LENGTH} characters and no more than ${PASSWORD_MAX_BYTES} UTF-8 bytes`
+      `Password must contain at least ${PASSWORD_MIN_LENGTH} non-whitespace characters and no more than ${PASSWORD_MAX_BYTES} UTF-8 bytes`
     );
   }
 
@@ -125,4 +125,37 @@ const login = async (input) => {
   return createAuthResult(user, secret);
 };
 
-module.exports = { signup, login };
+const getProfile = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw createAuthError("AUTH_UNAUTHORIZED", 401, "Authentication required");
+  }
+  return toPublicUser(user);
+};
+
+const updateProfile = async (userId, input) => {
+  const data = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  if (Object.keys(data).some((key) => key !== "name")) {
+    throw createAuthError("AUTH_VALIDATION_ERROR", 400, "Only the name can be updated");
+  }
+  if (typeof data.name !== "string" || !data.name.trim()) {
+    throw createAuthError("AUTH_VALIDATION_ERROR", 400, "Name is required");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { name: data.name.trim() },
+    { returnDocument: "after", runValidators: true }
+  );
+  if (!user) {
+    throw createAuthError("AUTH_UNAUTHORIZED", 401, "Authentication required");
+  }
+  return toPublicUser(user);
+};
+
+module.exports = {
+  signup,
+  login,
+  getProfile,
+  updateProfile,
+};

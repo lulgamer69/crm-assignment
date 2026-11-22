@@ -14,7 +14,10 @@ const errorHandler = (err, req, res, next) => {
   const isMalformedJson = err?.type === "entity.parse.failed";
   const statusCode = isMalformedJson ? 400 : getErrorStatusCode(err);
 
-  if (statusCode >= 500) {
+  const isOperationalAuthError =
+    err?.name === "AuthError" && err?.isOperational === true;
+
+  if (statusCode >= 500 && !isOperationalAuthError) {
     console.error("Unhandled request error", { statusCode });
 
     return res.status(statusCode).json({
@@ -27,9 +30,7 @@ const errorHandler = (err, req, res, next) => {
     success: false,
     message: isMalformedJson
       ? "Malformed JSON request body"
-      : statusCode < 500 &&
-          err?.name === "AuthError" &&
-          err?.isOperational === true
+      : isOperationalAuthError
         ? err.message
         : "Request failed",
   });

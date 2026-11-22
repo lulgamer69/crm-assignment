@@ -8,6 +8,7 @@ const { MongoMemoryServer } = require("mongodb-memory-server");
 const app = require("../app");
 const Lead = require("../models/lead");
 const User = require("../models/user");
+const Notification = require("../models/notification");
 
 const TEST_SECRET = "isolated-api-test-secret-with-at-least-32-bytes";
 const VALID_PASSWORD = "test-account-password";
@@ -44,11 +45,11 @@ before(async () => {
   process.env.JWT_SECRET = TEST_SECRET;
 
   await mongoose.connect(process.env.MONGO_URI, { dbName: "leadflow_test" });
-  await Promise.all([User.init(), Lead.init()]);
+  await Promise.all([User.init(), Lead.init(), Notification.init()]);
 });
 
 beforeEach(async () => {
-  await Promise.all([User.deleteMany({}), Lead.deleteMany({})]);
+  await Promise.all([User.deleteMany({}), Lead.deleteMany({}), Notification.deleteMany({})]);
 });
 
 after(async () => {
@@ -166,6 +167,7 @@ test("every lead endpoint requires a Bearer token", async () => {
     () => request(app).post("/api/leads").send(VALID_LEAD),
     () => request(app).get("/api/leads"),
     () => request(app).get("/api/leads/stats"),
+    () => request(app).get(`/api/leads/${id}`),
     () => request(app).put(`/api/leads/${id}`).send({ name: "Changed" }),
     () => request(app).delete(`/api/leads/${id}`),
   ];
@@ -178,6 +180,94 @@ test("every lead endpoint requires a Bearer token", async () => {
       message: "Authentication required",
     });
   }
+});
+
+test("authenticated user can fetch their own lead by ID", async () => {
+  const owner = await createUser("get-own-lead@example.com");
+  const lead = await Lead.create({ ...VALID_LEAD, owner: owner._id });
+
+  const response = await request(app)
+    .get(`/api/leads/${lead.id}`)
+    .set("Authorization", `Bearer ${tokenFor(owner.id)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data._id, lead.id);
+  assert.equal(response.body.data.owner, owner.id);
+  assert.deepEqual(
+    {
+      name: response.body.data.name,
+      email: response.body.data.email,
+      phone: response.body.data.phone,
+      company: response.body.data.company,
+      source: response.body.data.source,
+      status: response.body.data.status,
+      notes: response.body.data.notes,
+    },
+    {
+      name: VALID_LEAD.name,
+      email: VALID_LEAD.email,
+      phone: VALID_LEAD.phone,
+      company: VALID_LEAD.company,
+      source: VALID_LEAD.source,
+      status: VALID_LEAD.status,
+      notes: VALID_LEAD.notes,
+    }
+  );
+});
+
+test("user receives 404 when fetching another user's lead by ID", async () => {
+  const owner = await createUser("get-lead-owner@example.com");
+  const otherUser = await createUser("get-lead-other@example.com");
+  const lead = await Lead.create({ ...VALID_LEAD, owner: owner._id });
+
+  const response = await request(app)
+    .get(`/api/leads/${lead.id}`)
+    .set("Authorization", `Bearer ${tokenFor(otherUser.id)}`);
+
+  assert.equal(response.status, 404);
+  assert.deepEqual(response.body, {
+    success: false,
+    message: "Lead not found",
+  });
+});
+
+test("GET lead by ID rejects an invalid MongoDB ObjectID", async () => {
+  const owner = await createUser("get-lead-invalid-id@example.com");
+
+  const response = await request(app)
+    .get("/api/leads/not-an-object-id")
+    .set("Authorization", `Bearer ${tokenFor(owner.id)}`);
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(typeof response.body.message, "string");
+});
+
+test("GET lead by ID returns 404 for a valid but nonexistent ID", async () => {
+  const owner = await createUser("get-lead-missing-id@example.com");
+  const missingId = new mongoose.Types.ObjectId().toString();
+
+  const response = await request(app)
+    .get(`/api/leads/${missingId}`)
+    .set("Authorization", `Bearer ${tokenFor(owner.id)}`);
+
+  assert.equal(response.status, 404);
+  assert.deepEqual(response.body, {
+    success: false,
+    message: "Lead not found",
+  });
+});
+
+test("GET lead by ID requires authentication", async () => {
+  const response = await request(app)
+    .get(`/api/leads/${new mongoose.Types.ObjectId().toString()}`);
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(response.body, {
+    success: false,
+    message: "Authentication required",
+  });
 });
 
 test("missing, malformed, invalid, expired, and unsupported-algorithm tokens are rejected", async () => {
@@ -560,4 +650,149 @@ test("malformed JSON uses the safe centralized 400 response", async () => {
     success: false,
     message: "Malformed JSON request body",
   });
+});
+
+test("profile endpoints expose safe user data and only allow updating the name", async () => {
+  const user = await createUser("profile@example.com");
+  const otherUser = await createUser("profile-other@example.com");
+  const token = tokenFor(user.id);
+
+  const profile = await request(app)
+    .get("/api/auth/me")
+    .set("Authorization", `Bearer ${token}`);
+  assert.equal(profile.status, 200);
+  assert.deepEqual(profile.body.data, {
+    id: user.id,
+    name: "Test User",
+    email: "profile@example.com",
+  });
+  assert.doesNotMatch(JSON.stringify(profile.body), /passwordHash|password/);
+
+  const updated = await request(app)
+    .patch("/api/auth/me")
+    .set("Authorization", `Bearer ${token}`)
+    .send({ name: "  Updated Name " });
+  assert.equal(updated.status, 200);
+  assert.equal(updated.body.data.name, "Updated Name");
+
+  const emptyName = await request(app)
+    .patch("/api/auth/me")
+    .set("Authorization", `Bearer ${token}`)
+    .send({ name: "   " });
+  assert.equal(emptyName.status, 400);
+
+  const rejected = await request(app)
+    .patch("/api/auth/me")
+    .set("Authorization", `Bearer ${token}`)
+    .send({ name: "Changed", email: "other@example.com", id: otherUser.id });
+  assert.equal(rejected.status, 400);
+  assert.equal((await User.findById(user.id)).email, "profile@example.com");
+  assert.equal((await User.findById(otherUser.id)).name, "Test User");
+});
+
+test("password recovery routes are no longer available", async () => {
+  const forgot = await request(app).post("/api/auth/forgot-password").send({ email: "test@example.com" });
+  const reset = await request(app).post("/api/auth/reset-password").send({ token: "a".repeat(64), password: VALID_PASSWORD });
+  const passwordChange = await request(app).patch("/api/auth/password").send({ currentPassword: VALID_PASSWORD, newPassword: "replacement-password" });
+  assert.equal(forgot.status, 404);
+  assert.equal(reset.status, 404);
+  assert.equal(passwordChange.status, 404);
+});
+
+test("trend buckets use UTC dates and only count the authenticated user's leads", async () => {
+  const owner = await createUser("trend-owner@example.com");
+  const other = await createUser("trend-other@example.com");
+  const now = new Date();
+  const recentDate = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+  const olderDate = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000);
+  await Lead.create([
+    { ...VALID_LEAD, owner: owner._id, email: "trend-now@example.com", createdAt: now },
+    { ...VALID_LEAD, owner: owner._id, email: "trend-a@example.com", createdAt: recentDate },
+    { ...VALID_LEAD, owner: owner._id, email: "trend-b@example.com", createdAt: olderDate },
+    { ...VALID_LEAD, owner: other._id, email: "trend-other@example.com", createdAt: recentDate },
+  ]);
+
+  const response = await request(app)
+    .get("/api/leads/trends?period=30d")
+    .set("Authorization", `Bearer ${tokenFor(owner.id)}`);
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.timezone, "UTC");
+  assert.equal(response.body.data.buckets.length, 30);
+  assert.equal(response.body.data.buckets.reduce((sum, bucket) => sum + bucket.count, 0), 2);
+
+  const daily = await request(app)
+    .get("/api/leads/trends?period=7d")
+    .set("Authorization", `Bearer ${tokenFor(owner.id)}`);
+  assert.equal(daily.body.data.buckets.length, 7);
+  assert.equal(daily.body.data.buckets.reduce((sum, bucket) => sum + bucket.count, 0), 2);
+
+  const monthly = await request(app)
+    .get("/api/leads/trends?period=12m")
+    .set("Authorization", `Bearer ${tokenFor(owner.id)}`);
+  assert.equal(monthly.status, 200);
+  assert.equal(monthly.body.data.buckets.length, 12);
+  assert.equal(monthly.body.data.buckets.reduce((sum, bucket) => sum + bucket.count, 0), 3);
+
+  const hourly = await request(app)
+    .get("/api/leads/trends?period=24h")
+    .set("Authorization", `Bearer ${tokenFor(owner.id)}`);
+  assert.equal(hourly.body.data.buckets.length, 24);
+  assert.equal(hourly.body.data.buckets.reduce((sum, bucket) => sum + bucket.count, 0), 1);
+
+  const noLeadsUser = await createUser("trend-empty@example.com");
+  const empty = await request(app)
+    .get("/api/leads/trends?period=30d")
+    .set("Authorization", `Bearer ${tokenFor(noLeadsUser.id)}`);
+  assert.equal(empty.body.data.buckets.length, 30);
+  assert.equal(empty.body.data.buckets.reduce((sum, bucket) => sum + bucket.count, 0), 0);
+
+  const invalid = await request(app)
+    .get("/api/leads/trends?period=forever")
+    .set("Authorization", `Bearer ${tokenFor(owner.id)}`);
+  assert.equal(invalid.status, 400);
+});
+
+test("notifications are owner-scoped and support read-one and read-all", async () => {
+  const owner = await createUser("notice-owner@example.com");
+  const other = await createUser("notice-other@example.com");
+  const lead = await Lead.create({ ...VALID_LEAD, owner: owner._id });
+  const secondLead = await Lead.create({ ...VALID_LEAD, owner: owner._id, email: "second@example.com" });
+  await Notification.create([
+    { owner: owner._id, lead: lead._id, leadName: lead.name, action: "created" },
+    { owner: owner._id, lead: secondLead._id, leadName: secondLead.name, action: "created" },
+  ]);
+  await Notification.create({ owner: other._id, lead: secondLead._id, leadName: secondLead.name, action: "created" });
+
+  const ownerToken = tokenFor(owner.id);
+  const otherToken = tokenFor(other.id);
+  const ownList = await request(app).get("/api/notifications").set("Authorization", `Bearer ${ownerToken}`);
+  assert.equal(ownList.status, 200);
+  assert.equal(ownList.body.unreadCount, 2);
+  assert.equal(ownList.body.data.length, 2);
+  assert.ok(ownList.body.data.every((item) => item.owner === owner.id));
+
+  const otherList = await request(app).get("/api/notifications").set("Authorization", `Bearer ${otherToken}`);
+  assert.equal(otherList.body.data.length, 1);
+  const forbidden = await request(app)
+    .patch(`/api/notifications/${ownList.body.data[0]._id}/read`)
+    .set("Authorization", `Bearer ${otherToken}`);
+  assert.equal(forbidden.status, 404);
+
+  const readOne = await request(app)
+    .patch(`/api/notifications/${ownList.body.data[0]._id}/read`)
+    .set("Authorization", `Bearer ${ownerToken}`);
+  assert.equal(readOne.status, 200);
+  const readAll = await request(app).patch("/api/notifications/read-all").set("Authorization", `Bearer ${ownerToken}`);
+  assert.equal(readAll.status, 200);
+  assert.equal((await request(app).get("/api/notifications").set("Authorization", `Bearer ${ownerToken}`)).body.unreadCount, 0);
+
+  const changed = await request(app)
+    .put(`/api/leads/${lead.id}`)
+    .set("Authorization", `Bearer ${ownerToken}`)
+    .send({ name: "Updated for notification" });
+  assert.equal(changed.status, 200);
+  await request(app).delete(`/api/leads/${lead.id}`).set("Authorization", `Bearer ${ownerToken}`);
+  const actions = (await request(app).get("/api/notifications").set("Authorization", `Bearer ${ownerToken}`)).body.data.map((item) => item.action);
+  assert.ok(actions.includes("updated"));
+  assert.ok(actions.includes("deleted"));
 });

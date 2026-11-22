@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Lead = require("../models/lead");
+const notificationService = require("./notificationService");
 
 const ALLOWED_LEAD_FIELDS = new Set([
   "name",
@@ -21,6 +22,12 @@ const ALLOWED_STATUSES = new Set([
 const INPUT_VALIDATION_ERROR_CODE = "LEAD_INPUT_VALIDATION";
 const MAX_SEARCH_LENGTH = 100;
 const MAX_PAGE_SIZE = 100;
+const TREND_PERIODS = new Set([
+  "24h",
+  "7d",
+  "30d",
+  "12m",
+]);
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -63,6 +70,13 @@ const createLead = async (leadData, ownerId) => {
     owner: ownerId,
   });
 
+  await notificationService.createLeadNotification(ownerId, lead, "created");
+
+  return lead;
+};
+
+const getLeadById = async (id, ownerId) => {
+  const lead = await Lead.findOne({ _id: id, owner: ownerId });
   return lead;
 };
 
@@ -158,11 +172,19 @@ const updateLead = async (id, leadData, ownerId) => {
     }
   );
 
+  if (updatedLead) {
+    await notificationService.createLeadNotification(ownerId, updatedLead, "updated");
+  }
+
   return updatedLead;
 };
 
 const deleteLead = async (id, ownerId) => {
   const deletedLead = await Lead.findOneAndDelete({ _id: id, owner: ownerId });
+
+  if (deletedLead) {
+    await notificationService.createLeadNotification(ownerId, deletedLead, "deleted");
+  }
 
   return deletedLead;
 };
@@ -216,11 +238,66 @@ const getLeadStats = async (ownerId) => {
   return result;
 };
 
+const getLeadTrends = async (ownerId, period, now = new Date()) => {
+  if (!TREND_PERIODS.has(period)) {
+    throw createInputValidationError("Period must be 24h, 7d, 30d, or 12m");
+  }
+
+  let start;
+  let end;
+  let unit;
+  let bucketCount;
+
+  if (period === "24h") {
+    end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), now.getUTCHours() + 1));
+    start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+    unit = "hour";
+    bucketCount = 24;
+  } else if (period === "7d" || period === "30d") {
+    bucketCount = period === "7d" ? 7 : 30;
+    end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    start = new Date(end.getTime() - bucketCount * 24 * 60 * 60 * 1000);
+    unit = "day";
+  } else {
+    end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+    start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1));
+    unit = "month";
+    bucketCount = 12;
+  }
+
+  const grouped = await Lead.aggregate([
+    {
+      $match: {
+        owner: new mongoose.Types.ObjectId(ownerId),
+        createdAt: { $gte: start, $lt: end },
+      },
+    },
+    {
+      $group: {
+        _id: { $dateTrunc: { date: "$createdAt", unit, timezone: "UTC" } },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+  const countByStart = new Map(grouped.map((item) => [item._id.toISOString(), item.count]));
+  const buckets = Array.from({ length: bucketCount }, (_, index) => {
+    const bucketStart = new Date(start);
+    if (unit === "hour") bucketStart.setUTCHours(bucketStart.getUTCHours() + index);
+    else if (unit === "day") bucketStart.setUTCDate(bucketStart.getUTCDate() + index);
+    else bucketStart.setUTCMonth(bucketStart.getUTCMonth() + index);
+    return { start: bucketStart.toISOString(), count: countByStart.get(bucketStart.toISOString()) ?? 0 };
+  });
+
+  return { period, timezone: "UTC", start: start.toISOString(), end: end.toISOString(), buckets };
+};
+
 module.exports = {
   INPUT_VALIDATION_ERROR_CODE,
   createLead,
+  getLeadById,
   getAllLeads,
   updateLead,
   deleteLead,
   getLeadStats,
+  getLeadTrends,
 };

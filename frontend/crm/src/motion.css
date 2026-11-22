@@ -1,0 +1,203 @@
+/* Shared entrance and interaction motion for the LeadFlow CRM. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes crm-rise-in {
+    from { opacity: 0; translate: 0 16px; }
+    to { opacity: 1; translate: 0 0; }
+  }
+
+  @keyframes crm-slide-in-left {
+    from { opacity: 0; translate: -20px 0; }
+    to { opacity: 1; translate: 0 0; }
+  }
+
+  @keyframes crm-slide-in-right {
+    from { opacity: 0; translate: 20px 0; }
+    to { opacity: 1; translate: 0 0; }
+  }
+
+  @keyframes crm-card-enter {
+    from { opacity: 0; scale: 0.985; }
+    to { opacity: 1; scale: 1; }
+  }
+
+  @keyframes crm-icon-pop {
+    0% { scale: 0.75; opacity: 0; }
+    70% { scale: 1.08; opacity: 1; }
+    100% { scale: 1; opacity: 1; }
+  }
+
+  @keyframes crm-bar-grow {
+    from { scale: 0 1; }
+    to { scale: 1 1; }
+  }
+
+  /* Login and Register */
+  .login-card {
+    animation: crm-card-enter 560ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .login-brand-panel {
+    animation: crm-slide-in-left 650ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .login-form-content {
+    animation: crm-slide-in-right 650ms cubic-bezier(0.2, 0.7, 0.2, 1) 70ms both;
+  }
+
+  .login-field {
+    animation: crm-rise-in 480ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .login-field:nth-child(2) { animation-delay: 90ms; }
+  .login-field:nth-child(3) { animation-delay: 150ms; }
+
+  .login-submit,
+  .signup-prompt,
+  .register-login-prompt {
+    animation: crm-rise-in 500ms cubic-bezier(0.2, 0.7, 0.2, 1) 180ms both;
+  }
+
+  .login-illustration {
+    animation: crm-rise-in 760ms cubic-bezier(0.2, 0.7, 0.2, 1) 160ms both;
+  }
+
+  .brand-wave {
+    animation: crm-wave-breathe 8s ease-in-out infinite alternate;
+  }
+
+  @keyframes crm-wave-breathe {
+    from { opacity: 0.72; }
+    to { opacity: 1; }
+  }
+
+  .login-submit,
+  .signup-prompt a,
+  .password-toggle,
+  .add-lead-submit,
+  .add-lead-cancel,
+  .dashboard-add-button,
+  .leads-add-button,
+  .leads-clear-button,
+  .profile-panel button,
+  .header-icon-button,
+  .header-user-avatar {
+    transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease,
+      color 180ms ease, background-color 180ms ease;
+  }
+
+  .login-submit:hover:not(:disabled),
+  .add-lead-submit:hover:not(:disabled),
+  .dashboard-add-button:hover:not(:disabled),
+  .leads-add-button:hover:not(:disabled),
+  .profile-panel button:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+
+  .password-toggle:hover,
+  .signup-prompt a:hover {
+    transform: translateY(-1px);
+  }
+
+  /* Dashboard panels and live data */
+  .dashboard-content > .dashboard-kpis,
+  .dashboard-content > .analytics-grid,
+  .dashboard-content > .data-grid,
+  .dashboard-content > .dashboard-footer {
+    animation: crm-rise-in 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .dashboard-content > .analytics-grid { animation-delay: 100ms; }
+  .dashboard-content > .data-grid { animation-delay: 180ms; }
+  .dashboard-content > .dashboard-footer { animation-delay: 240ms; }
+
+  .kpi-card,
+  .analytics-card,
+  .data-card,
+  .add-lead-card,
+  .profile-panel {
+    animation: crm-card-enter 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .kpi-card:nth-child(2) { animation-delay: 55ms; }
+  .kpi-card:nth-child(3) { animation-delay: 110ms; }
+  .kpi-card:nth-child(4) { animation-delay: 165ms; }
+
+  .analytics-grid > :nth-child(2),
+  .data-grid > :nth-child(2) { animation-delay: 90ms; }
+
+  .dashboard-card,
+  .profile-panel,
+  .add-lead-card {
+    transition: box-shadow 180ms ease, border-color 180ms ease;
+  }
+
+  .kpi-icon,
+  .add-lead-title-icon {
+    animation: crm-icon-pop 460ms cubic-bezier(0.2, 0.7, 0.2, 1) 180ms both;
+  }
+
+  .status-donut { animation: crm-card-enter 680ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .source-bar {
+    transform-origin: left center;
+    animation: crm-bar-grow 650ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .source-row:nth-child(2) .source-bar { animation-delay: 60ms; }
+  .source-row:nth-child(3) .source-bar { animation-delay: 120ms; }
+  .source-row:nth-child(4) .source-bar { animation-delay: 180ms; }
+  .source-row:nth-child(5) .source-bar { animation-delay: 240ms; }
+
+  .recent-lead-row {
+    animation: crm-rise-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .recent-lead-row:nth-child(2) { animation-delay: 55ms; }
+  .recent-lead-row:nth-child(3) { animation-delay: 110ms; }
+
+  /* Leads, Add/Edit Lead, and Profile pages */
+  .leads-topbar,
+  .leads-page-heading,
+  .add-lead-page-heading,
+  .leads-filter-card,
+  .leads-table-card,
+  .profile-grid {
+    animation: crm-rise-in 480ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  .leads-filter-card { animation-delay: 70ms; }
+  .leads-table-card { animation-delay: 130ms; }
+  .leads-table tbody tr:not(.leads-skeleton-row) {
+    animation: crm-rise-in 360ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .leads-table tbody tr:nth-child(2) { animation-delay: 45ms; }
+  .leads-table tbody tr:nth-child(3) { animation-delay: 90ms; }
+  .leads-table tbody tr:nth-child(4) { animation-delay: 135ms; }
+  .leads-table tbody tr:nth-child(5) { animation-delay: 180ms; }
+
+  .dashboard-nav-link,
+  .lead-row-actions button,
+  .leads-pagination button,
+  .view-all-link,
+  .leads-search-suggestions button {
+    transition: transform 160ms ease, background-color 160ms ease,
+      color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .dashboard-nav-link:hover,
+  .lead-row-actions button:hover:not(:disabled),
+  .leads-pagination button:hover:not(:disabled),
+  .view-all-link:hover {
+    transform: translateY(-1px);
+  }
+
+  .leads-search-suggestions button:hover { transform: translateX(2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

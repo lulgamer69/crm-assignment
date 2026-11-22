@@ -1,0 +1,19 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,jsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+  darkMode: ["selector", "[data-theme='dark']"],
+  future: {
+    respectDefaultRingColorOpacity: true,
+  },
+  corePlugins: {
+    preflight: true,
+  },
+}
+

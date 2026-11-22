@@ -41,6 +41,26 @@ const createLead = async (req, res, next) => {
   }
 };
 
+const getLeadById = async (req, res, next) => {
+  try {
+    const lead = await leadService.getLeadById(req.params.id, req.auth.userId);
+
+    if (!lead) {
+      return res.status(404).json({
+        success: false,
+        message: "Lead not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: lead,
+    });
+  } catch (error) {
+    return sendErrorResponse(res, error, next);
+  }
+};
+
 const getAllLeads = async (req, res, next) => {
   try {
     const page = req.query.page === undefined ? 1 : req.query.page;
@@ -134,10 +154,24 @@ const getLeadStats = async (req, res, next) => {
   }
 };
 
+const getLeadTrends = async (req, res, next) => {
+  try {
+    const trends = await leadService.getLeadTrends(
+      req.auth.userId,
+      req.query.period
+    );
+    return res.status(200).json({ success: true, data: trends });
+  } catch (error) {
+    return sendErrorResponse(res, error, next);
+  }
+};
+
 module.exports = {
   createLead,
+  getLeadById,
   getAllLeads,
   updateLead,
   deleteLead,
   getLeadStats,
+  getLeadTrends,
 };
