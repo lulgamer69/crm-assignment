@@ -13,6 +13,7 @@ app.use(
     origin: [
       "http://localhost:5173",
       "https://crm-assignment-eta.vercel.app",
+      "https://crm-assignment-w6gy.vercel.app",
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
