@@ -3,7 +3,7 @@ import { clearAuthToken, getAuthToken } from "./authStorage";
 
 // Keep API calls on one client so protected requests share the same token logic.
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: import.meta.env.VITE_API_URL || "https://crm-assignment-j0bd.onrender.com/api",
 });
 
 API.interceptors.request.use((config) => {
