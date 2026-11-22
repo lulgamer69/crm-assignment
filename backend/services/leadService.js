@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Lead = require("../models/lead");
 
 const ALLOWED_LEAD_FIELDS = new Set([
@@ -56,13 +57,17 @@ const pickAllowedLeadFields = (leadData) =>
     )
   );
 
-const createLead = async (leadData) => {
-  const lead = await Lead.create(pickAllowedLeadFields(leadData));
+const createLead = async (leadData, ownerId) => {
+  const lead = await Lead.create({
+    ...pickAllowedLeadFields(leadData),
+    owner: ownerId,
+  });
 
   return lead;
 };
 
 const getAllLeads = async (
+  ownerId,
   search,
   status,
   page = 1,
@@ -105,7 +110,7 @@ const getAllLeads = async (
     );
   }
 
-  const query = {};
+  const query = { owner: ownerId };
 
   if (normalizedSearch) {
     const escapedSearch = escapeRegex(normalizedSearch);
@@ -135,7 +140,7 @@ const getAllLeads = async (
   };
 };
 
-const updateLead = async (id, leadData) => {
+const updateLead = async (id, leadData, ownerId) => {
   const updates = pickAllowedLeadFields(leadData);
 
   if (Object.keys(updates).length === 0) {
@@ -144,24 +149,29 @@ const updateLead = async (id, leadData) => {
     );
   }
 
-  const updatedLead = await Lead.findByIdAndUpdate(id, updates, {
-    returnDocument: "after",
-    runValidators: true,
-  });
+  const updatedLead = await Lead.findOneAndUpdate(
+    { _id: id, owner: ownerId },
+    updates,
+    {
+      returnDocument: "after",
+      runValidators: true,
+    }
+  );
 
   return updatedLead;
 };
 
-const deleteLead = async (id) => {
-  const deletedLead = await Lead.findByIdAndDelete(id);
+const deleteLead = async (id, ownerId) => {
+  const deletedLead = await Lead.findOneAndDelete({ _id: id, owner: ownerId });
 
   return deletedLead;
 };
 
-const getLeadStats = async () => {
+const getLeadStats = async (ownerId) => {
   const stats = await Lead.aggregate([
     {
       $match: {
+        owner: new mongoose.Types.ObjectId(ownerId),
         status: { $in: [...ALLOWED_STATUSES] },
       },
     },

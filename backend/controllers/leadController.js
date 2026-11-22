@@ -4,7 +4,7 @@ const leadService = require("../services/leadService");
 const isRequestBodyObject = (body) =>
   typeof body === "object" && body !== null && !Array.isArray(body);
 
-const sendErrorResponse = (res, error) => {
+const sendErrorResponse = (res, error, next) => {
   const isExpectedInputError =
     error?.code === leadService.INPUT_VALIDATION_ERROR_CODE ||
     error instanceof mongoose.Error.ValidationError ||
@@ -17,15 +17,10 @@ const sendErrorResponse = (res, error) => {
     });
   }
 
-  console.error("Unexpected lead controller error:", error);
-
-  return res.status(500).json({
-    success: false,
-    message: "Internal server error",
-  });
+  return next(error);
 };
 
-const createLead = async (req, res) => {
+const createLead = async (req, res, next) => {
   if (!isRequestBodyObject(req.body)) {
     return res.status(400).json({
       success: false,
@@ -34,7 +29,7 @@ const createLead = async (req, res) => {
   }
 
   try {
-    const lead = await leadService.createLead(req.body);
+    const lead = await leadService.createLead(req.body, req.auth.userId);
 
     res.status(201).json({
       success: true,
@@ -42,15 +37,16 @@ const createLead = async (req, res) => {
       data: lead,
     });
   } catch (error) {
-    return sendErrorResponse(res, error);
+    return sendErrorResponse(res, error, next);
   }
 };
 
-const getAllLeads = async (req, res) => {
+const getAllLeads = async (req, res, next) => {
   try {
     const page = req.query.page === undefined ? 1 : req.query.page;
     const limit = req.query.limit === undefined ? 10 : req.query.limit;
     const result = await leadService.getAllLeads(
+      req.auth.userId,
       req.query.search,
       req.query.status,
       page,
@@ -65,11 +61,11 @@ const getAllLeads = async (req, res) => {
       data: result.leads,
     });
   } catch (error) {
-    return sendErrorResponse(res, error);
+    return sendErrorResponse(res, error, next);
   }
 };
 
-const updateLead = async (req, res) => {
+const updateLead = async (req, res, next) => {
   if (!isRequestBodyObject(req.body)) {
     return res.status(400).json({
       success: false,
@@ -80,7 +76,8 @@ const updateLead = async (req, res) => {
   try {
     const updatedLead = await leadService.updateLead(
       req.params.id,
-      req.body
+      req.body,
+      req.auth.userId
     );
 
     if (!updatedLead) {
@@ -96,13 +93,16 @@ const updateLead = async (req, res) => {
       data: updatedLead,
     });
   } catch (error) {
-    return sendErrorResponse(res, error);
+    return sendErrorResponse(res, error, next);
   }
 };
 
-const deleteLead = async (req, res) => {
+const deleteLead = async (req, res, next) => {
   try {
-    const deletedLead = await leadService.deleteLead(req.params.id);
+    const deletedLead = await leadService.deleteLead(
+      req.params.id,
+      req.auth.userId
+    );
 
     if (!deletedLead) {
       return res.status(404).json({
@@ -117,20 +117,20 @@ const deleteLead = async (req, res) => {
       data: deletedLead,
     });
   } catch (error) {
-    return sendErrorResponse(res, error);
+    return sendErrorResponse(res, error, next);
   }
 };
 
-const getLeadStats = async (req, res) => {
+const getLeadStats = async (req, res, next) => {
   try {
-    const stats = await leadService.getLeadStats();
+    const stats = await leadService.getLeadStats(req.auth.userId);
 
     res.status(200).json({
       success: true,
       data: stats,
     });
   } catch (error) {
-    return sendErrorResponse(res, error);
+    return sendErrorResponse(res, error, next);
   }
 };
 
