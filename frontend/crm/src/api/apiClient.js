@@ -2,11 +2,15 @@ import axios from "axios";
 import { clearAuthToken, getAuthToken } from "./authStorage";
 
 const configuredApiUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/+$/, "");
-const apiBaseUrl = configuredApiUrl
+const normalizedConfiguredApiUrl = configuredApiUrl
   ? /\/api$/i.test(configuredApiUrl)
     ? configuredApiUrl
     : `${configuredApiUrl}/api`
   : "https://crm-assignment-j0bd.onrender.com/api";
+
+// Production uses Vercel's same-origin rewrite so preview URLs never need
+// individual CORS allowlist entries on the backend.
+const apiBaseUrl = import.meta.env.PROD ? "/api" : normalizedConfiguredApiUrl;
 
 // Keep API calls on one client so protected requests share the same token logic.
 const API = axios.create({
