@@ -80,7 +80,7 @@
   }
 
   .register-heading h2 {
-    font-size: clamp(30px, 3vw, 40px);
+    font-size: clamp(24px, 2vw, 30px);
   }
 
   .register-heading p {
@@ -93,24 +93,27 @@
 
   .register-field label {
     margin-bottom: 6px;
+    font-size: 12px;
   }
 
   .register-field .login-input-wrap {
-    height: 48px;
+    height: 36px;
   }
 
   .password-requirements {
     margin-top: 6px;
-    font-size: 12px;
+    font-size: 11px;
   }
 
   .register-form-panel .login-submit {
-    min-height: 50px;
+    min-height: 40px;
     margin-top: 16px;
+    font-size: 13px;
   }
 
   .register-login-prompt {
     margin-top: 12px;
+    font-size: 12px;
   }
 }
 
