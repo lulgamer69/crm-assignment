@@ -1,10 +1,10 @@
 .register-card .login-brand-panel {
-  min-height: 835px;
+  min-height: 0;
 }
 
 .register-form-panel {
-  padding-top: clamp(32px, 4vw, 68px);
-  padding-bottom: clamp(32px, 4vw, 68px);
+  padding-top: clamp(22px, 4vh, 46px);
+  padding-bottom: clamp(22px, 4vh, 46px);
 }
 
 .register-form-panel .login-form-content {
@@ -12,7 +12,7 @@
 }
 
 .register-heading {
-  margin-bottom: 42px;
+  margin-bottom: clamp(24px, 4vh, 38px);
 }
 
 .register-heading h2 {
@@ -24,7 +24,7 @@
 }
 
 .register-field + .register-field {
-  margin-top: 21px;
+  margin-top: 16px;
 }
 
 .register-field label span {
@@ -32,7 +32,7 @@
 }
 
 .register-field .login-input-wrap {
-  height: 59px;
+  height: 54px;
 }
 
 .password-requirements {
@@ -43,29 +43,74 @@
 }
 
 .register-form-panel .login-submit {
-  margin-top: 40px;
+  margin-top: 28px;
 }
 
 .register-login-prompt {
-  margin-top: 29px;
+  margin-top: 20px;
 }
 
 @media (max-width: 1000px) {
   .register-card .login-brand-panel {
-    min-height: 760px;
+    min-height: 0;
   }
 
   .register-form-panel {
-    padding-top: 40px;
-    padding-bottom: 40px;
+    padding-top: clamp(20px, 3.5vh, 36px);
+    padding-bottom: clamp(20px, 3.5vh, 36px);
   }
 
   .register-heading {
-    margin-bottom: 34px;
+    margin-bottom: 24px;
   }
 
   .register-field + .register-field {
-    margin-top: 18px;
+    margin-top: 14px;
+  }
+}
+
+@media (max-height: 800px) and (min-width: 701px) {
+  .register-form-panel {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+
+  .register-heading {
+    margin-bottom: 16px;
+  }
+
+  .register-heading h2 {
+    font-size: clamp(30px, 3vw, 40px);
+  }
+
+  .register-heading p {
+    margin-top: 6px;
+  }
+
+  .register-field + .register-field {
+    margin-top: 10px;
+  }
+
+  .register-field label {
+    margin-bottom: 6px;
+  }
+
+  .register-field .login-input-wrap {
+    height: 48px;
+  }
+
+  .password-requirements {
+    margin-top: 6px;
+    font-size: 12px;
+  }
+
+  .register-form-panel .login-submit {
+    min-height: 50px;
+    margin-top: 16px;
+  }
+
+  .register-login-prompt {
+    margin-top: 12px;
   }
 }
 

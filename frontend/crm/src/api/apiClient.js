@@ -1,9 +1,16 @@
 import axios from "axios";
 import { clearAuthToken, getAuthToken } from "./authStorage";
 
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim().replace(/\/+$/, "");
+const apiBaseUrl = configuredApiUrl
+  ? /\/api$/i.test(configuredApiUrl)
+    ? configuredApiUrl
+    : `${configuredApiUrl}/api`
+  : "https://crm-assignment-j0bd.onrender.com/api";
+
 // Keep API calls on one client so protected requests share the same token logic.
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "https://crm-assignment-j0bd.onrender.com/api",
+  baseURL: apiBaseUrl,
 });
 
 API.interceptors.request.use((config) => {

@@ -79,7 +79,6 @@
   .leads-add-button,
   .leads-clear-button,
   .profile-panel button,
-  .header-icon-button,
   .header-user-avatar {
     transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease,
       color 180ms ease, background-color 180ms ease;
